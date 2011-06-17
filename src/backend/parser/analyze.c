@@ -42,6 +42,7 @@
 #include "parser/parsetree.h"
 #include "rewrite/rewriteManip.h"
 #include "utils/rel.h"
+#include "utils/guc.h"
 
 
 static Query *transformDeleteStmt(ParseState *pstate, DeleteStmt *stmt);
@@ -301,6 +302,12 @@ transformDeleteStmt(ParseState *pstate, DeleteStmt *stmt)
 	qry->distinctClause = NIL;
 
 	/*
+	 * Set alpha-cut attribute
+	 */
+	qry->alpha_cut = MAX_ALPHA_CUT;
+
+
+	/*
 	 * The USING clause is non-standard SQL syntax, and is equivalent in
 	 * functionality to the FROM list that can be specified for UPDATE. The
 	 * USING keyword is used rather than FROM because FROM is already a
@@ -356,6 +363,12 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 
 	qry->commandType = CMD_INSERT;
 	pstate->p_is_insert = true;
+
+	/*
+	 * Set alpha-cut attribute
+	 */
+	qry->alpha_cut = MAX_ALPHA_CUT;
+
 
 	/* process the WITH clause independently of all else */
 	if (stmt->withClause)
@@ -1185,6 +1198,14 @@ transformValuesClause(ParseState *pstate, SelectStmt *stmt)
 	qry->limitCount = transformLimitClause(pstate, stmt->limitCount,
 										   "LIMIT");
 
+
+
+	/*
+	 * Set alpha-cut attribute
+	 */
+	qry->alpha_cut = MAX_ALPHA_CUT;
+
+
 	if (stmt->lockingClause)
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
@@ -1328,6 +1349,13 @@ transformSetOperationStmt(ParseState *pstate, SelectStmt *stmt)
 	stmt->limitOffset = NULL;
 	stmt->limitCount = NULL;
 	stmt->lockingClause = NIL;
+
+
+	/*
+	 * Set alpha-cut attribute
+	 */
+	qry->alpha_cut = MAX_ALPHA_CUT;
+
 
 	/* We don't support FOR UPDATE/SHARE with set ops at the moment. */
 	if (lockingClause)
@@ -1976,6 +2004,13 @@ transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 
 	qry->hasSubLinks = pstate->p_hasSubLinks;
 
+
+	/*
+	 * Set alpha-cut attribute
+	 */
+	qry->alpha_cut = MAX_ALPHA_CUT;
+
+
 	/*
 	 * Top-level aggregates are simply disallowed in UPDATE, per spec. (From
 	 * an implementation point of view, this is forced because the implicit
@@ -2217,6 +2252,13 @@ transformDeclareCursorStmt(ParseState *pstate, DeclareCursorStmt *stmt)
 
 	result->utilityStmt = (Node *) stmt;
 
+
+	/*
+	 * Set alpha-cut attribute
+	 */
+	result->alpha_cut = MAX_ALPHA_CUT;
+
+
 	return result;
 }
 
@@ -2243,6 +2285,10 @@ transformExplainStmt(ParseState *pstate, ExplainStmt *stmt)
 	result = makeNode(Query);
 	result->commandType = CMD_UTILITY;
 	result->utilityStmt = (Node *) stmt;
+	/*
+	 * Set alpha-cut attribute
+	 */
+	result->alpha_cut = MAX_ALPHA_CUT;
 
 	return result;
 }

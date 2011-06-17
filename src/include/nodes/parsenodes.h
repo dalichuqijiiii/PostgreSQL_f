@@ -150,6 +150,8 @@ typedef struct Query
 
 	List	   *constraintDeps; /* a list of pg_constraint OIDs that the query
 								 * depends on to be semantically valid */
+
+	float4		alpha_cut;		/* score from which a tuple is qualified. */
 } Query;
 
 

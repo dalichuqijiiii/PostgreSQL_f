@@ -51,6 +51,9 @@ typedef struct QueryDesc
 
 	/* This is always set NULL by the core system, but plugins can change it */
 	struct Instrumentation *totaltime;	/* total time spent in ExecutorRun */
+
+	float4		alpha_cut;		/* score from which a tuple is qualified. */
+
 } QueryDesc;
 
 /* in pquery.c */

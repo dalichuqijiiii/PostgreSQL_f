@@ -368,6 +368,26 @@ static const struct config_enum_entry constraint_exclusion_options[] = {
 	{NULL, 0, false}
 };
 
+
+static const struct config_enum_entry t_norm_options[] = {
+	{"zadeh", ZADEH, false},
+	{"probabilistic", PROBABILISTIC, false},
+	{"lukasiewicz", LUKASIEWICZ, false},
+	{"hamacher", HAMACHER, false},
+	{"weber", WEBER, false},
+	{NULL, 0, false}
+};
+
+static const struct config_enum_entry t_conorm_options[] = {
+	{"zadeh", ZADEH, false},
+	{"probabilistic", PROBABILISTIC, false},
+	{"lukasiewicz", LUKASIEWICZ, false},
+	{"hamacher", HAMACHER, false},
+	{"weber", WEBER, false},
+	{NULL, 0, false}
+};
+
+
 /*
  * Although only "on", "off", and "local" are documented, we
  * accept all the likely variants of "on" and "off".
@@ -3224,6 +3244,20 @@ static struct config_enum ConfigureNamesEnum[] =
 		XMLOPTION_CONTENT, xmloption_options,
 		NULL, NULL, NULL
 	},
+
+	{
+	 {"default_fuzzy_and_operator", PGC_USERSET, FUZZY_QUERIES_PROCESSING,
+	  gettext_noop("which fuzzy and operator definition use"),
+	  NULL},
+	 &fuzzy_and_op_to_use, DEFAULT_FUZZY_AND_OPERATOR,
+	 t_norm_options, NULL, NULL, DEFAULT_FUZZY_AND_OPERATOR},
+
+	{
+	 {"default_fuzzy_or_operator", PGC_USERSET, FUZZY_QUERIES_PROCESSING,
+	  gettext_noop("which fuzzy or operator definition use"),
+	  NULL},
+	 &fuzzy_or_op_to_use, DEFAULT_FUZZY_OR_OPERATOR,
+	 t_conorm_options, NULL, NULL, DEFAULT_FUZZY_OR_OPERATOR},
 
 
 	/* End-of-list marker */

@@ -55,6 +55,7 @@
 #include "utils/memutils.h"
 #include "utils/typcache.h"
 #include "utils/xml.h"
+#include "utils/guc.h"
 
 
 /* static function decls */
@@ -2552,13 +2553,16 @@ ExecEvalScalarArrayOp(ScalarArrayOpExprState *sstate,
  *		argument, for example), or in the target list.	Not that you
  *		need to know this, mind you...
  * ----------------------------------------------------------------
+ * Fuzzy version of ExecEvalNot function
  */
+
 static Datum
-ExecEvalNot(BoolExprState *notclause, ExprContext *econtext,
-			bool *isNull, ExprDoneCond *isDone)
+ExecEvalNot(BoolExprState *notclause, ExprContext *econtext, bool *isNull,
+        ExprDoneCond *isDone)
 {
-	ExprState  *clause = linitial(notclause->args);
-	Datum		expr_value;
+	ExprState *clause = linitial(notclause->args);
+
+	Datum expr_value;
 
 	if (isDone)
 		*isDone = ExprSingleResult;
@@ -2572,24 +2576,35 @@ ExecEvalNot(BoolExprState *notclause, ExprContext *econtext,
 	if (*isNull)
 		return expr_value;
 
+
+	/*		return BoolGetDatum(1); */
 	/*
 	 * evaluation of 'not' is simple.. expr is false, then return 'true' and
 	 * vice versa.
 	 */
-	return BoolGetDatum(!DatumGetBool(expr_value));
+	return Float4GetDatum(fuzzy_not_operator(DatumGetFloat4(expr_value)));
 }
 
 /* ----------------------------------------------------------------
  *		ExecEvalOr
  * ----------------------------------------------------------------
  */
+
+/* fuzzy version of ExecEvalOr function */
 static Datum
-ExecEvalOr(BoolExprState *orExpr, ExprContext *econtext,
-		   bool *isNull, ExprDoneCond *isDone)
+ExecEvalOr(BoolExprState *orExpr, ExprContext *econtext, bool *isNull,
+        ExprDoneCond *isDone)
 {
-	List	   *clauses = orExpr->args;
-	ListCell   *clause;
-	bool		AnyNull;
+	List *clauses = orExpr->args;
+
+	ListCell *clause;
+
+	bool AnyNull;
+
+	/*
+	 * in the case of OR operation score should be initialized to 0.
+	 */
+	float4 score = 0;
 
 	if (isDone)
 		*isDone = ExprSingleResult;
@@ -2610,37 +2625,48 @@ ExecEvalOr(BoolExprState *orExpr, ExprContext *econtext,
 	 * the OR's result is FALSE.
 	 */
 	foreach(clause, clauses)
-	{
-		ExprState  *clausestate = (ExprState *) lfirst(clause);
-		Datum		clause_value;
+		{
+			ExprState *clausestate = (ExprState *) lfirst(clause);
 
-		clause_value = ExecEvalExpr(clausestate, econtext, isNull, NULL);
+			Datum clause_value;
 
-		/*
-		 * if we have a non-null true result, then return it.
-		 */
-		if (*isNull)
-			AnyNull = true;		/* remember we got a null */
-		else if (DatumGetBool(clause_value))
-			return clause_value;
-	}
+			clause_value = ExecEvalExpr(clausestate, econtext, isNull, NULL);
 
-	/* AnyNull is true if at least one clause evaluated to NULL */
+			score = fuzzy_or_operator(score, DatumGetFloat4(clause_value));
+
+			/*
+			 * if we have a non-null true result, then return it.
+			 */
+			if (*isNull)
+				AnyNull = true; /* remember we got a null */
+			if (score >= MAX_ALPHA_CUT)
+				return Float4GetDatum(score);
+		}
+
+	/*
+	 * AnyNull is true if at least one clause evaluated to NULL
+	 */
 	*isNull = AnyNull;
-	return BoolGetDatum(false);
+	return Float4GetDatum(score);
 }
 
 /* ----------------------------------------------------------------
  *		ExecEvalAnd
  * ----------------------------------------------------------------
  */
+
+/* fuzzy version of ExecEvalAnd function */
 static Datum
-ExecEvalAnd(BoolExprState *andExpr, ExprContext *econtext,
-			bool *isNull, ExprDoneCond *isDone)
+ExecEvalAnd(BoolExprState *andExpr, ExprContext *econtext, bool *isNull,
+        ExprDoneCond *isDone)
 {
-	List	   *clauses = andExpr->args;
-	ListCell   *clause;
-	bool		AnyNull;
+	List *clauses = andExpr->args;
+
+	ListCell *clause;
+
+	bool AnyNull;
+
+	float4 score = 1;
 
 	if (isDone)
 		*isDone = ExprSingleResult;
@@ -2657,25 +2683,37 @@ ExecEvalAnd(BoolExprState *andExpr, ExprContext *econtext,
 	 */
 
 	foreach(clause, clauses)
-	{
-		ExprState  *clausestate = (ExprState *) lfirst(clause);
-		Datum		clause_value;
+		{
+			ExprState *clausestate = (ExprState *) lfirst(clause);
 
-		clause_value = ExecEvalExpr(clausestate, econtext, isNull, NULL);
+			Datum clause_value;
 
-		/*
-		 * if we have a non-null false result, then return it.
-		 */
-		if (*isNull)
-			AnyNull = true;		/* remember we got a null */
-		else if (!DatumGetBool(clause_value))
-			return clause_value;
-	}
+			clause_value = ExecEvalExpr(clausestate, econtext, isNull, NULL);
 
-	/* AnyNull is true if at least one clause evaluated to NULL */
+			score = fuzzy_and_operator(score, DatumGetFloat4(clause_value));
+
+			/*
+			 * if we have a non-null false result, then return it.
+			 */
+			if (*isNull)
+				AnyNull = true; /* remember we got a null */
+			else if (score < econtext->ecxt_alpha_cut)
+				{
+					/*
+					 * if score of tuple < alpha-cut
+					 * by default return 0.
+					 */
+					return Float4GetDatum(0);
+				}
+		}
+
+	/*
+	 * AnyNull is true if at least one clause evaluated to NULL
+	 */
 	*isNull = AnyNull;
-	return BoolGetDatum(!AnyNull);
+	return Float4GetDatum(score);
 }
+
 
 /* ----------------------------------------------------------------
  *		ExecEvalConvertRowtype
@@ -2754,6 +2792,7 @@ ExecEvalConvertRowtype(ConvertRowtypeExprState *cstate,
 	return HeapTupleGetDatum(result);
 }
 
+
 /* ----------------------------------------------------------------
  *		ExecEvalCase
  *
@@ -2762,81 +2801,83 @@ ExecEvalConvertRowtype(ConvertRowtypeExprState *cstate,
  *		for results.
  *		- thomas 1998-11-09
  * ----------------------------------------------------------------
+ * Fuzzy version of ExecEvalCase function
  */
+
 static Datum
-ExecEvalCase(CaseExprState *caseExpr, ExprContext *econtext,
-			 bool *isNull, ExprDoneCond *isDone)
+ExecEvalCase(CaseExprState *caseExpr, ExprContext *econtext, bool *isNull,
+ExprDoneCond *isDone)
 {
-	List	   *clauses = caseExpr->args;
-	ListCell   *clause;
-	Datum		save_datum;
-	bool		save_isNull;
+List *clauses = caseExpr->args;
 
-	if (isDone)
-		*isDone = ExprSingleResult;
+ListCell *clause;
 
-	/*
-	 * If there's a test expression, we have to evaluate it and save the value
-	 * where the CaseTestExpr placeholders can find it. We must save and
-	 * restore prior setting of econtext's caseValue fields, in case this node
-	 * is itself within a larger CASE.
-	 */
-	save_datum = econtext->caseValue_datum;
-	save_isNull = econtext->caseValue_isNull;
+Datum save_datum;
 
-	if (caseExpr->arg)
-	{
-		econtext->caseValue_datum = ExecEvalExpr(caseExpr->arg,
-												 econtext,
-												 &econtext->caseValue_isNull,
-												 NULL);
-	}
+bool save_isNull;
 
-	/*
-	 * we evaluate each of the WHEN clauses in turn, as soon as one is true we
-	 * return the corresponding result. If none are true then we return the
-	 * value of the default clause, or NULL if there is none.
-	 */
-	foreach(clause, clauses)
-	{
-		CaseWhenState *wclause = lfirst(clause);
-		Datum		clause_value;
+if (isDone)
+*isDone = ExprSingleResult;
 
-		clause_value = ExecEvalExpr(wclause->expr,
-									econtext,
-									isNull,
-									NULL);
+/*
+* If there's a test expression, we have to evaluate it and save the value
+* where the CaseTestExpr placeholders can find it. We must save and
+* restore prior setting of econtext's caseValue fields, in case this node
+* is itself within a larger CASE.
+*/
+save_datum = econtext->caseValue_datum;
+save_isNull = econtext->caseValue_isNull;
 
-		/*
-		 * if we have a true test, then we return the result, since the case
-		 * statement is satisfied.	A NULL result from the test is not
-		 * considered true.
-		 */
-		if (DatumGetBool(clause_value) && !*isNull)
-		{
-			econtext->caseValue_datum = save_datum;
-			econtext->caseValue_isNull = save_isNull;
-			return ExecEvalExpr(wclause->result,
-								econtext,
-								isNull,
-								isDone);
-		}
-	}
-
-	econtext->caseValue_datum = save_datum;
-	econtext->caseValue_isNull = save_isNull;
-
-	if (caseExpr->defresult)
-	{
-		return ExecEvalExpr(caseExpr->defresult,
-							econtext,
-							isNull,
-							isDone);
-	}
-
-	*isNull = true;
-	return (Datum) 0;
+if (caseExpr->arg)
+{
+econtext->caseValue_datum = ExecEvalExpr(caseExpr->arg,
+econtext,
+&econtext->caseValue_isNull,
+NULL);
 }
+
+/*
+* we evaluate each of the WHEN clauses in turn, as soon as one is true we
+* return the corresponding result. If none are true then we return the
+* value of the default clause, or NULL if there is none.
+*/
+foreach(clause, clauses)
+{
+CaseWhenState *wclause = lfirst(clause);
+
+Datum clause_value;
+
+clause_value = ExecEvalExpr(wclause->expr, econtext, isNull, NULL);
+
+/*
+* if we have a true test, then we return the result, since the case
+* statement is satisfied.	A NULL result from the test is not
+* considered true.
+*/
+if (DatumGetFloat4(clause_value) >= econtext->ecxt_alpha_cut
+&& !*isNull)
+{
+econtext->caseValue_datum = save_datum;
+econtext->caseValue_isNull = save_isNull;
+return ExecEvalExpr(wclause->result, econtext, isNull, isDone);
+}
+}
+
+econtext->caseValue_datum = save_datum;
+econtext->caseValue_isNull = save_isNull;
+
+if (caseExpr->defresult)
+{
+return ExecEvalExpr(caseExpr->defresult, econtext, isNull, isDone);
+}
+
+*isNull = true;
+return (Datum) 0;
+}
+
+
+
+
 
 /*
  * ExecEvalCaseTestExpr

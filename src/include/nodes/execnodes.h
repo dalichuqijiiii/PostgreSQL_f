@@ -145,6 +145,9 @@ typedef struct ExprContext
 
 	/* Functions to call back when ExprContext is shut down */
 	ExprContext_CB *ecxt_callbacks;
+
+	/*	float4 ecxt_score;			// score of the tuple */
+	float4		ecxt_alpha_cut; /* score from which a tuple is qualified. */
 } ExprContext;
 
 /*
@@ -999,6 +1002,7 @@ typedef struct PlanState
 	ProjectionInfo *ps_ProjInfo;	/* info for doing tuple projection */
 	bool		ps_TupFromTlist;/* state flag for processing set-valued
 								 * functions in targetlist */
+	float4		ps_alpha_cut;	/* score from which a tuple is qualified. */
 } PlanState;
 
 /* ----------------

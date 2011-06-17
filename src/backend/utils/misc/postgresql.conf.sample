@@ -547,3 +547,23 @@
 #------------------------------------------------------------------------------
 
 #custom_variable_classes = ''		# list of custom variable class names
+
+
+#------------------------------------------------------------------------------
+# FUZZY QUERIES PROCESSING
+#------------------------------------------------------------------------------
+
+# - Fuzzy Executor Options -
+default_alpha_cut = 1               # range 0.00001-1.0
+default_fuzzy_and_operator = zadeh      # which fuzzy and operator definition use.
+                        # possible values in order:
+                        # zadeh
+                        # probabilistic
+                        # lukasiewicz
+                        # hamacher
+                        # weber
+                        
+default_fuzzy_or_operator = zadeh       # values in order
+                        # zadeh
+                        # lukasuitch
+                        # ...

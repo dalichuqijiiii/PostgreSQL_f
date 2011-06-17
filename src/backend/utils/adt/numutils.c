@@ -227,3 +227,44 @@ pg_lltoa(int64 value, char *a)
 		*a-- = swap;
 	}
 }
+
+/*
+ * fuzzy_and_operator
+ *
+ * this function implements the different interpretation
+ * of fuzzy and operator
+ */
+float4
+fuzzy_and_operator(float4 val1, float4 val2)
+{
+	if (val1 < val2)
+		return val1;
+	else
+		return val2;
+}
+
+/*
+ * fuzzy_and_operator
+ *
+ * this function implements the different interpretation of
+ * Fuzzy or operator
+ */
+float4
+fuzzy_or_operator(float4 val1, float4 val2)
+{
+	if (val1 < val2)
+		return val2;
+	else
+		return val1;
+}
+
+/*
+ * fuzzy_not_operator
+ *
+ * this function implement negation operator.
+ */
+float4
+fuzzy_not_operator(float4 val1)
+{
+	return (1 - val1);
+}

@@ -18,6 +18,24 @@
 #include "nodes/parsenodes.h"
 
 /*
+ * the main defintion of T-norm
+ * and T-conorm in fuzzy set.
+ */
+#define ZADEH			1
+#define PROBABILISTIC	2
+#define LUKASIEWICZ		3
+#define HAMACHER		4
+#define WEBER			5
+
+#define DEFAULT_FUZZY_AND_OPERATOR 1
+#define DEFAULT_FUZZY_OR_OPERATOR 1
+int			fuzzy_and_op_to_use;		/* fuzzy and operator definition to use */
+
+int			fuzzy_or_op_to_use; /* fuzzy or operator definition to use */
+
+
+
+/*
  *		Defined in adt/
  */
 
@@ -276,6 +294,11 @@ extern int32 pg_atoi(char *s, int size, int c);
 extern void pg_itoa(int16 i, char *a);
 extern void pg_ltoa(int32 l, char *a);
 extern void pg_lltoa(int64 ll, char *a);
+
+extern float4 fuzzy_and_operator(float4 val1, float4 val2);
+extern float4 fuzzy_or_operator(float4 val1, float4 val2);
+extern float4 fuzzy_not_operator(float4 val1);
+
 
 /*
  *		Per-opclass comparison functions for new btrees.  These are

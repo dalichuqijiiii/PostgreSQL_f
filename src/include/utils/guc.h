@@ -185,6 +185,8 @@ typedef enum
 
 #define GUC_NOT_WHILE_SEC_REST	0x8000	/* can't set if security restricted */
 
+
+
 /* GUC vars that are actually declared in guc.c, rather than elsewhere */
 extern bool log_duration;
 extern bool Debug_print_plan;
@@ -221,6 +223,15 @@ extern char *application_name;
 extern int	tcp_keepalives_idle;
 extern int	tcp_keepalives_interval;
 extern int	tcp_keepalives_count;
+
+/*
+ * default_qual_threshold represents the score from which a tuple is
+ * qualified or not.
+ */
+#define MAX_ALPHA_CUT		1
+#define MIN_ALPHA_CUT		0.00001
+double		default_alpha_cut_value;
+
 
 /*
  * Functions exported by guc.c
