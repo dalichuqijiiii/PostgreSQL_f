@@ -52,6 +52,11 @@ extern Node *coerce_to_domain(Node *arg, Oid baseTypeId, int32 baseTypeMod,
 				 bool hideInputCoercion,
 				 bool lengthCoercionDone);
 
+
+/* Used for SQLf fuzzy expressions */
+extern Node *coerce_to_float(ParseState *pstate, Node *node,
+							 const char *constructName);
+
 extern Node *coerce_to_boolean(ParseState *pstate, Node *node,
 				  const char *constructName);
 extern Node *coerce_to_specific_type(ParseState *pstate, Node *node,

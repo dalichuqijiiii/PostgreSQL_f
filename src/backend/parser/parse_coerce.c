@@ -953,6 +953,68 @@ coerce_record_to_complex(ParseState *pstate, Node *node,
 }
 
 /*
+ * coerce_to_float()
+ *		Coerce an argument of a construct that requires float input
+ *		(AND, OR, NOT, etc).  Also check that input is not a set.
+ *      Used for SQLf fuzzy expressions
+ * Returns the possibly-transformed node tree.
+ *
+ * As with coerce_type, pstate may be NULL if no special unknown-Param
+ * processing is wanted.
+ */
+Node *
+coerce_to_float(ParseState *pstate, Node *node, const char *constructName)
+{
+	Oid			inputTypeId = exprType(node);
+
+	if (inputTypeId != FLOAT4OID)
+	{
+		if (inputTypeId == BOOLOID)
+		{
+			Node	   *newnode;
+
+			newnode = coerce_to_target_type(pstate, node, inputTypeId,
+											FLOAT4OID, -1, COERCION_EXPLICIT,
+											COERCE_EXPLICIT_CAST, -1);
+			node = newnode;
+		}
+		else
+		{
+			Node	   *newnode;
+
+			newnode =
+				coerce_to_target_type(pstate, node, inputTypeId, FLOAT4OID, -1,
+									  COERCION_ASSIGNMENT,
+									  COERCE_IMPLICIT_CAST, -1);
+
+			if (newnode == NULL)
+				ereport(ERROR, (errcode(ERRCODE_DATATYPE_MISMATCH),
+								/*
+								 * translator: first %s is name of a SQL construct, eg WHERE
+								 */
+								errmsg
+								("argument of %s must be type real or bool, not type %s",
+								 constructName, format_type_be(inputTypeId)),
+								parser_errposition(pstate,
+												   exprLocation(node))));
+			node = newnode;
+		}
+	}
+
+	if (expression_returns_set(node))
+		ereport(ERROR, (errcode(ERRCODE_DATATYPE_MISMATCH),
+						/*
+						 * translator: %s is name of a SQL construct, eg WHERE
+						 */
+						errmsg("argument of %s must not return a set",
+							   constructName),
+						parser_errposition(pstate, exprLocation(node))));
+
+	return node;
+}
+
+
+/*
  * coerce_to_boolean()
  *		Coerce an argument of a construct that requires boolean input
  *		(AND, OR, NOT, etc).  Also check that input is not a set.

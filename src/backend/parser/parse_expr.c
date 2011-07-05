@@ -908,8 +908,11 @@ transformAExprAnd(ParseState *pstate, A_Expr *a)
 	Node	   *lexpr = transformExpr(pstate, a->lexpr);
 	Node	   *rexpr = transformExpr(pstate, a->rexpr);
 
-	lexpr = coerce_to_boolean(pstate, lexpr, "AND");
-	rexpr = coerce_to_boolean(pstate, rexpr, "AND");
+/*	lexpr = coerce_to_boolean(pstate, lexpr, "AND"); */
+/*	rexpr = coerce_to_boolean(pstate, rexpr, "AND"); */
+/* Coerce to float for fuzzy SQLf expressions */
+	lexpr = coerce_to_float(pstate, lexpr, "AND");
+	rexpr = coerce_to_float(pstate, rexpr, "AND");
 
 	return (Node *) makeBoolExpr(AND_EXPR,
 								 list_make2(lexpr, rexpr),
@@ -922,8 +925,11 @@ transformAExprOr(ParseState *pstate, A_Expr *a)
 	Node	   *lexpr = transformExpr(pstate, a->lexpr);
 	Node	   *rexpr = transformExpr(pstate, a->rexpr);
 
-	lexpr = coerce_to_boolean(pstate, lexpr, "OR");
-	rexpr = coerce_to_boolean(pstate, rexpr, "OR");
+/*	lexpr = coerce_to_boolean(pstate, lexpr, "OR"); */
+/*	rexpr = coerce_to_boolean(pstate, rexpr, "OR"); */
+/* Coerce to float for fuzzy SQLf expressions */
+	lexpr = coerce_to_float(pstate, lexpr, "OR");
+	rexpr = coerce_to_float(pstate, rexpr, "OR");
 
 	return (Node *) makeBoolExpr(OR_EXPR,
 								 list_make2(lexpr, rexpr),
@@ -935,7 +941,9 @@ transformAExprNot(ParseState *pstate, A_Expr *a)
 {
 	Node	   *rexpr = transformExpr(pstate, a->rexpr);
 
-	rexpr = coerce_to_boolean(pstate, rexpr, "NOT");
+/*	rexpr = coerce_to_boolean(pstate, rexpr, "NOT"); */
+/* Coerce to float for fuzzy SQLf expressions */
+	rexpr = coerce_to_float(pstate, rexpr, "NOT");
 
 	return (Node *) makeBoolExpr(NOT_EXPR,
 								 list_make1(rexpr),
@@ -1209,7 +1217,9 @@ transformAExprIn(ParseState *pstate, A_Expr *a)
 								   rexpr,
 								   a->location);
 
-		cmp = coerce_to_boolean(pstate, cmp, "IN");
+/*		cmp = coerce_to_boolean(pstate, cmp, "IN"); */
+/* Coerce to float to manage fuzzy expressions in flexible SQL_f queries */
+		cmp = coerce_to_float(pstate, cmp, "IN");
 		if (result == NULL)
 			result = cmp;
 		else
@@ -1322,9 +1332,13 @@ transformCaseExpr(ParseState *pstate, CaseExpr *c)
 		}
 		neww->expr = (Expr *) transformExpr(pstate, warg);
 
-		neww->expr = (Expr *) coerce_to_boolean(pstate,
-												(Node *) neww->expr,
-												"CASE/WHEN");
+/*		neww->expr = (Expr *) coerce_to_boolean(pstate, */
+/*												(Node *) neww->expr, */
+/*												"CASE/WHEN"); */
+/* Coerce to float to manage fuzzy expressions in flexible SQL_f queries */
+		neww->expr = (Expr *) coerce_to_float(pstate,
+											  (Node *) neww->expr,
+											  "CASE/WHEN");
 
 		warg = (Node *) w->result;
 		neww->result = (Expr *) transformExpr(pstate, warg);
@@ -1873,6 +1887,8 @@ transformXmlExpr(ParseState *pstate, XmlExpr *x)
 					newe = coerce_to_specific_type(pstate, newe, TEXTOID,
 												   "XMLPARSE");
 				else
+/*					newe = coerce_to_float(pstate, newe, "XMLPARSE"); */
+/* Coerce to float for fuzzy SQLf expressions */
 					newe = coerce_to_boolean(pstate, newe, "XMLPARSE");
 				break;
 			case IS_XMLPI:
@@ -1982,9 +1998,11 @@ transformBooleanTest(ParseState *pstate, BooleanTest *b)
 
 	b->arg = (Expr *) transformExpr(pstate, (Node *) b->arg);
 
-	b->arg = (Expr *) coerce_to_boolean(pstate,
-										(Node *) b->arg,
-										clausename);
+/*	b->arg = (Expr *) coerce_to_boolean(pstate, */
+/*										(Node *) b->arg, */
+/*										clausename); */
+/* Coerce to float for fuzzy SQLf expressions */
+	b->arg = (Expr *) coerce_to_float(pstate, (Node *) b->arg, clausename);
 
 	return (Node *) b;
 }

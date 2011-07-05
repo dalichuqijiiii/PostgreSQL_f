@@ -1170,7 +1170,11 @@ transformWhereClause(ParseState *pstate, Node *clause,
 
 	qual = transformExpr(pstate, clause);
 
-	qual = coerce_to_boolean(pstate, qual, constructName);
+	/*
+	 * qual = coerce_to_boolean(pstate, qual, constructName);
+	 */
+	/* coerce to float for SQLf fuzzy queries */
+	qual = coerce_to_float(pstate, qual, constructName);
 
 	return qual;
 }
